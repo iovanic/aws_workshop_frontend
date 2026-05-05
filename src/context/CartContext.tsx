@@ -1,0 +1,188 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from "react";
+import { getDroneById, type Drone } from "@/data/drones";
+
+const STORAGE_KEY = "next-drones-cart";
+
+export type CartState = Record<string, number>;
+
+export type CartAction =
+  | { type: "ADD_ITEM"; id: string }
+  | { type: "REMOVE_ITEM"; id: string }
+  | { type: "UPDATE_QTY"; id: string; quantity: number }
+  | { type: "CLEAR_CART" }
+  | { type: "HYDRATE"; payload: CartState };
+
+function cartReducer(state: CartState, action: CartAction): CartState {
+  switch (action.type) {
+    case "HYDRATE":
+      return { ...action.payload };
+    case "ADD_ITEM": {
+      const current = state[action.id] ?? 0;
+      return { ...state, [action.id]: current + 1 };
+    }
+    case "REMOVE_ITEM": {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [action.id]: _removed, ...rest } = state;
+      return rest;
+    }
+    case "UPDATE_QTY": {
+      if (action.quantity <= 0) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [action.id]: _removed, ...rest } = state;
+        return rest;
+      }
+      return { ...state, [action.id]: action.quantity };
+    }
+    case "CLEAR_CART":
+      return {};
+    default:
+      return state;
+  }
+}
+
+export type CartLine = {
+  drone: Drone;
+  quantity: number;
+};
+
+type CartContextValue = {
+  state: CartState;
+  hydrated: boolean;
+  addItem: (id: string) => void;
+  removeItem: (id: string) => void;
+  updateQty: (id: string, quantity: number) => void;
+  clearCart: () => void;
+  lines: CartLine[];
+  subtotalCents: number;
+  itemCount: number;
+  getQuantity: (id: string) => number;
+};
+
+const CartContext = createContext<CartContextValue | null>(null);
+
+function readStorage(): CartState {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as CartState;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(cartReducer, {});
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate from localStorage on client
+  useEffect(() => {
+    const stored = readStorage();
+    dispatch({ type: "HYDRATE", payload: stored });
+    setHydrated(true);
+  }, []);
+
+  // Persist when state changes (after first hydrate)
+  useEffect(() => {
+    if (!hydrated) return;
+    if (Object.keys(state).length === 0) {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  }, [state, hydrated]);
+
+  const addItem = useCallback((id: string) => {
+    dispatch({ type: "ADD_ITEM", id });
+  }, []);
+
+  const removeItem = useCallback((id: string) => {
+    dispatch({ type: "REMOVE_ITEM", id });
+  }, []);
+
+  const updateQty = useCallback((id: string, quantity: number) => {
+    dispatch({ type: "UPDATE_QTY", id, quantity });
+  }, []);
+
+  const clearCart = useCallback(() => {
+    dispatch({ type: "CLEAR_CART" });
+  }, []);
+
+  const lines = useMemo((): CartLine[] => {
+    return Object.entries(state)
+      .map(([id, quantity]) => {
+        const drone = getDroneById(id);
+        if (!drone || quantity <= 0) return null;
+        return { drone, quantity };
+      })
+      .filter((v): v is CartLine => v !== null);
+  }, [state]);
+
+  const subtotalCents = useMemo(() => {
+    return lines.reduce((acc, { drone, quantity }) => {
+      return acc + drone.price * quantity;
+    }, 0);
+  }, [lines]);
+
+  const itemCount = useMemo(() => {
+    return Object.values(state).reduce((a, b) => a + b, 0);
+  }, [state]);
+
+  const getQuantity = useCallback(
+    (id: string) => state[id] ?? 0,
+    [state]
+  );
+
+  const value = useMemo<CartContextValue>(
+    () => ({
+      state,
+      hydrated,
+      addItem,
+      removeItem,
+      updateQty,
+      clearCart,
+      lines,
+      subtotalCents,
+      itemCount,
+      getQuantity,
+    }),
+    [
+      state,
+      hydrated,
+      addItem,
+      removeItem,
+      updateQty,
+      clearCart,
+      lines,
+      subtotalCents,
+      itemCount,
+      getQuantity,
+    ]
+  );
+
+  return (
+    <CartContext.Provider value={value}>{children}</CartContext.Provider>
+  );
+}
+
+export function useCartContext() {
+  const ctx = useContext(CartContext);
+  if (!ctx) {
+    throw new Error("useCartContext must be used within CartProvider");
+  }
+  return ctx;
+}
