@@ -40,3 +40,11 @@ next-env.d.ts
 .cursor
 plan.md
 agents.md
+
+# Terraform / Terragrunt (workshop infra)
+infra/terraform/.terragrunt-cache/
+infra/terraform/backend.tf
+infra/terraform/terraform.tfstate
+infra/terraform/terraform.tfstate.backup
+infra/terraform/.terraform/
+infra/terraform/.terragrunt-bin

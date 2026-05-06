@@ -3,38 +3,47 @@
 import Image from "next/image";
 import { useMemo } from "react";
 import { useShopName } from "@/context/ShopNameContext";
-import type { Drone } from "@/data/drones";
+import type { Product } from "@/types/product";
 import { useCart } from "@/hooks/useCart";
 import { useImageCarousel } from "@/hooks/useImageCarousel";
 import { formatEuro } from "@/lib/format";
 
-type Props = { drone: Drone };
+type Props = { product: Product };
 
-export function DroneCard({ drone }: Props) {
+export function DroneCard({ product }: Props) {
   const shopName = useShopName();
   const { addItem, getQuantity } = useCart();
-  const qty = getQuantity(drone.id);
-  const { index, next, prev, goTo } = useImageCarousel(drone.images.length);
+  const qty = getQuantity(product.id);
+  const { index, next, prev, goTo } = useImageCarousel(product.images.length);
 
-  const imageSrc = useMemo(() => drone.images[index], [drone.images, index]);
+  const imageSrc = useMemo(() => {
+    if (product.images.length === 0) return null;
+    return product.images[index];
+  }, [product.images, index]);
 
   const description = useMemo(
-    () => drone.description.replaceAll("__SHOP_NAME__", shopName),
-    [drone.description, shopName]
+    () => product.description.replaceAll("__SHOP_NAME__", shopName),
+    [product.description, shopName]
   );
 
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/60 shadow-lg shadow-slate-950/50">
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-800">
-        <Image
-          src={imageSrc}
-          alt={`${drone.name} — imagen ${index + 1} de ${drone.images.length}`}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, 33vw"
-          priority={false}
-        />
-        {drone.images.length > 1 && (
+        {imageSrc ? (
+          <Image
+            src={imageSrc}
+            alt={`${product.name} — imagen ${index + 1} de ${product.images.length}`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 33vw"
+            priority={false}
+          />
+        ) : (
+          <div className="flex h-full min-h-[12rem] items-center justify-center bg-slate-800/80 text-sm text-slate-500">
+            Sin imagen
+          </div>
+        )}
+        {product.images.length > 1 && (
           <>
             <button
               type="button"
@@ -57,7 +66,7 @@ export function DroneCard({ drone }: Props) {
               role="tablist"
               aria-label="Galería"
             >
-              {drone.images.map((_, i) => (
+              {product.images.map((_, i) => (
                 <button
                   key={i}
                   type="button"
@@ -78,18 +87,18 @@ export function DroneCard({ drone }: Props) {
         )}
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <h2 className="text-lg font-semibold text-sky-100">{drone.name}</h2>
-        <p className="text-sm text-sky-300/90">{drone.tagline}</p>
+        <h2 className="text-lg font-semibold text-sky-100">{product.name}</h2>
+        <p className="text-sm text-sky-300/90">{product.tagline}</p>
         <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-400">
           {description}
         </p>
         <div className="mt-4 flex items-center justify-between gap-2">
           <p className="text-xl font-bold text-amber-400">
-            {formatEuro(drone.price)}
+            {formatEuro(product.price)}
           </p>
           <button
             type="button"
-            onClick={() => addItem(drone.id)}
+            onClick={() => addItem(product.id)}
             className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-400"
           >
             Agregar al carrito

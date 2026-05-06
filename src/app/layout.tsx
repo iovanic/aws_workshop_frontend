@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Navbar } from "@/components/Navbar";
 import { Providers } from "@/components/Providers";
+import { getCatalogForRequest } from "@/lib/catalog-server";
 import { getShopName } from "@/lib/getShopName";
 import "./globals.css";
 
@@ -27,19 +28,20 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const shopName = getShopName();
+  const initialCatalog = await getCatalogForRequest();
 
   return (
     <html lang="es">
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
-        <Providers shopName={shopName}>
+        <Providers shopName={shopName} initialCatalog={initialCatalog}>
           <Navbar />
           <main>{children}</main>
         </Providers>

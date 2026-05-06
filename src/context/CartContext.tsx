@@ -9,7 +9,9 @@ import {
   useReducer,
   useState,
 } from "react";
-import { getDroneById, type Drone } from "@/data/drones";
+
+import { placeholderProduct } from "@/lib/product-utils";
+import type { Product } from "@/types/product";
 
 const STORAGE_KEY = "next-drones-cart";
 
@@ -51,7 +53,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 }
 
 export type CartLine = {
-  drone: Drone;
+  product: Product;
   quantity: number;
 };
 
@@ -62,8 +64,10 @@ type CartContextValue = {
   removeItem: (id: string) => void;
   updateQty: (id: string, quantity: number) => void;
   clearCart: () => void;
+  mergeCatalogFromApi: (products: Product[]) => void;
   lines: CartLine[];
-  subtotalCents: number;
+  /** Suma de líneas en euros (coincide con `product.price` de la API). */
+  subtotal: number;
   itemCount: number;
   getQuantity: (id: string) => number;
 };
@@ -85,9 +89,31 @@ function readStorage(): CartState {
   return {};
 }
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+function buildProductMap(products: Product[]): Record<string, Product> {
+  return Object.fromEntries(products.map((p) => [p.id, p]));
+}
+
+export function CartProvider({
+  children,
+  initialCatalog,
+}: {
+  children: React.ReactNode;
+  initialCatalog: Product[];
+}) {
   const [state, dispatch] = useReducer(cartReducer, {});
   const [hydrated, setHydrated] = useState(false);
+  const [clientCatalog, setClientCatalog] = useState<Product[]>([]);
+
+  const mergeCatalogFromApi = useCallback((products: Product[]) => {
+    setClientCatalog((prev) => {
+      const map = buildProductMap([...prev, ...products]);
+      return Object.values(map);
+    });
+  }, []);
+
+  const productById = useMemo(() => {
+    return buildProductMap([...initialCatalog, ...clientCatalog]);
+  }, [initialCatalog, clientCatalog]);
 
   // Hydrate from localStorage on client
   useEffect(() => {
@@ -125,16 +151,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const lines = useMemo((): CartLine[] => {
     return Object.entries(state)
       .map(([id, quantity]) => {
-        const drone = getDroneById(id);
-        if (!drone || quantity <= 0) return null;
-        return { drone, quantity };
+        if (quantity <= 0) return null;
+        const product = productById[id] ?? placeholderProduct(id);
+        return { product, quantity };
       })
       .filter((v): v is CartLine => v !== null);
-  }, [state]);
+  }, [state, productById]);
 
-  const subtotalCents = useMemo(() => {
-    return lines.reduce((acc, { drone, quantity }) => {
-      return acc + drone.price * quantity;
+  const subtotal = useMemo(() => {
+    return lines.reduce((acc, { product, quantity }) => {
+      return acc + product.price * quantity;
     }, 0);
   }, [lines]);
 
@@ -155,8 +181,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem,
       updateQty,
       clearCart,
+      mergeCatalogFromApi,
       lines,
-      subtotalCents,
+      subtotal,
       itemCount,
       getQuantity,
     }),
@@ -167,8 +194,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeItem,
       updateQty,
       clearCart,
+      mergeCatalogFromApi,
       lines,
-      subtotalCents,
+      subtotal,
       itemCount,
       getQuantity,
     ]
