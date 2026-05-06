@@ -17,22 +17,10 @@ export function CatalogGrid() {
   const [products, setProducts] = useState<Product[]>([]);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
-  const hasApiUrl = Boolean(
-    (process.env.NEXT_PUBLIC_API_GW_URL ?? "").trim()
-  );
-
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
-      if (!hasApiUrl) {
-        setLoadState("error");
-        setErrorDetail(
-          "Falta NEXT_PUBLIC_API_GW_URL en el build del contenedor."
-        );
-        return;
-      }
-
       setLoadState("loading");
       setErrorDetail(null);
 
@@ -87,17 +75,7 @@ export function CatalogGrid() {
     return () => {
       cancelled = true;
     };
-  }, [hasApiUrl, mergeCatalogFromApi]);
-
-  if (!hasApiUrl) {
-    return (
-      <p className="rounded-xl border border-amber-600/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100/90">
-        Falta configurar la URL de API Gateway en la imagen Docker (build-arg{" "}
-        <code className="rounded bg-slate-900 px-1.5">NEXT_PUBLIC_API_GW_URL</code>
-        ).
-      </p>
-    );
-  }
+  }, [mergeCatalogFromApi]);
 
   if (loadState === "loading") {
     return (
