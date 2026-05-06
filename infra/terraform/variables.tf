@@ -6,7 +6,8 @@ variable "region" {
 
 variable "repo_root" {
   type        = string
-  description = "Absolute path to aws2-workshop repo root (Docker build context for frontend)."
+  description = "Absolute path to aws2-workshop repo root (Docker build context for frontend). No longer used; image is pushed manually before terraform apply."
+  default     = ""
 }
 
 variable "db_identifier" {
