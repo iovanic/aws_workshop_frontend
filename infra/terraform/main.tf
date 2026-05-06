@@ -347,42 +347,10 @@ resource "aws_api_gateway_stage" "prod" {
   stage_name    = "prod"
 }
 
-resource "null_resource" "build_push_frontend" {
+resource "aws_instance" "frontend" {
   depends_on = [
     aws_api_gateway_stage.prod,
     aws_cognito_user_pool_client.shop_client,
-    aws_instance.api,
-  ]
-
-  triggers = {
-    api_gw_url = local.gw_url
-    pool_id    = aws_cognito_user_pool.workshop.id
-    client_id  = aws_cognito_user_pool_client.shop_client.id
-    repo_root  = var.repo_root
-    image      = local.fe_image
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    command       = <<-EOT
-      set -euo pipefail
-      cd "${var.repo_root}"
-      ACCOUNT="$(aws sts get-caller-identity --region ${var.region} --query Account --output text)"
-      REGISTRY="$ACCOUNT.dkr.ecr.${var.region}.amazonaws.com"
-      aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin "$REGISTRY"
-      docker build \
-        --build-arg NEXT_PUBLIC_API_GW_URL="${local.gw_url}" \
-        --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID="${aws_cognito_user_pool.workshop.id}" \
-        --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID="${aws_cognito_user_pool_client.shop_client.id}" \
-        -t "${local.fe_image}" .
-      docker push "${local.fe_image}"
-    EOT
-  }
-}
-
-resource "aws_instance" "frontend" {
-  depends_on = [
-    null_resource.build_push_frontend,
     aws_instance.api,
   ]
 
