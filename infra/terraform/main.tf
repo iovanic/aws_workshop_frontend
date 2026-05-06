@@ -362,6 +362,7 @@ resource "aws_instance" "frontend" {
   associate_public_ip_address = true
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data_frontend.sh.tpl", {
+    deploy_revision                  = var.frontend_deploy_revision
     region                           = var.region
     registry                         = local.registry
     image_uri                        = local.fe_image

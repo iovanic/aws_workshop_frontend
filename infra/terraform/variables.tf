@@ -51,6 +51,12 @@ variable "image_tag" {
   default = "latest"
 }
 
+variable "frontend_deploy_revision" {
+  type        = string
+  description = "Increment (e.g. 2, 3) after docker push of a new frontend image so Terraform replaces the EC2 (user_data hash changes)."
+  default     = "1"
+}
+
 variable "iam_instance_profile_name" {
   type        = string
   description = "AWS Academy Lab instance profile (no IAM creation)."
