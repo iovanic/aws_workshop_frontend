@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CartItem } from "@/components/CartItem";
 import { CheckoutForm } from "@/components/CheckoutForm";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/hooks/useCart";
 import { useShopName } from "@/context/ShopNameContext";
 import { formatEuro } from "@/lib/format";
@@ -11,13 +13,15 @@ import { formatEuro } from "@/lib/format";
 type Step = "cart" | "checkout" | "thanks";
 
 export function CartView() {
-  const { lines, subtotalCents, hydrated, clearCart } = useCart();
+  const router = useRouter();
+  const { lines, subtotal, hydrated, clearCart } = useCart();
   const shopName = useShopName();
+  const { isAuthenticated, isLoading, openAuthModal } = useAuth();
   const [step, setStep] = useState<Step>("cart");
 
   const canCheckout = useMemo(
-    () => lines.length > 0 && subtotalCents > 0,
-    [lines.length, subtotalCents]
+    () => lines.length > 0 && subtotal > 0,
+    [lines.length, subtotal]
   );
 
   const onPurchaseSuccess = useCallback(() => {
@@ -27,6 +31,15 @@ export function CartView() {
   const onBackToCatalog = useCallback(() => {
     setStep("cart");
   }, []);
+
+  const goToCheckout = useCallback(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.push("/login?next=/cart");
+      return;
+    }
+    setStep("checkout");
+  }, [isAuthenticated, isLoading, router]);
 
   if (!hydrated) {
     return (
@@ -84,42 +97,61 @@ export function CartView() {
           <>
             <ul className="mt-6 space-y-4" aria-label="Artículos en el carrito">
               {lines.map((line) => (
-                <CartItem key={line.drone.id} line={line} />
+                <CartItem key={line.product.id} line={line} />
               ))}
             </ul>
             <div className="mt-6 flex items-center justify-between border-t border-slate-700/80 pt-4">
               <p className="text-lg text-slate-300">Subtotal</p>
               <p className="text-xl font-bold text-amber-400">
-                {formatEuro(subtotalCents)}
+                {formatEuro(subtotal)}
               </p>
             </div>
             {step === "cart" && (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStep("checkout")}
-                  disabled={!canCheckout}
-                  className="rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Comprar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      // eslint-disable-next-line no-alert
-                      confirm("¿Vaciar el carrito?")
-                    ) {
-                      clearCart();
-                    }
-                  }}
-                  className="text-sm text-slate-500 hover:text-red-400"
-                >
-                  Vaciar carrito
-                </button>
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={goToCheckout}
+                    disabled={!canCheckout || isLoading}
+                    className="rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isLoading ? "Comprobando sesión…" : "Comprar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        // eslint-disable-next-line no-alert
+                        confirm("¿Vaciar el carrito?")
+                      ) {
+                        clearCart();
+                      }
+                    }}
+                    className="text-sm text-slate-500 hover:text-red-400"
+                  >
+                    Vaciar carrito
+                  </button>
+                </div>
+                {!isLoading && !isAuthenticated && (
+                  <p className="text-sm text-slate-500">
+                    Para pagar necesitas una sesión Cognito.{" "}
+                    <button
+                      type="button"
+                      className="text-sky-400 underline hover:text-sky-300"
+                      onClick={openAuthModal}
+                    >
+                      Entrar en ventana emergente
+                    </button>
+                    {" o "}
+                    <Link href="/login?next=/cart" className="text-sky-400 underline">
+                      ir a la página de acceso
+                    </Link>
+                    .
+                  </p>
+                )}
               </div>
             )}
-            {step === "checkout" && (
+            {step === "checkout" && isAuthenticated && (
               <div>
                 <button
                   type="button"
@@ -129,6 +161,32 @@ export function CartView() {
                   ← Volver al resumen
                 </button>
                 <CheckoutForm onSuccess={onPurchaseSuccess} />
+              </div>
+            )}
+            {step === "checkout" && !isLoading && !isAuthenticated && (
+              <div className="mt-4 rounded-xl border border-amber-600/40 bg-slate-900/60 p-4">
+                <p className="text-slate-300">
+                  Tu sesión ha expirado o no estás identificado. Vuelve a iniciar
+                  sesión para finalizar el pedido.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("cart");
+                      openAuthModal();
+                    }}
+                    className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+                  >
+                    Entrar
+                  </button>
+                  <Link
+                    href="/login?next=/cart"
+                    className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+                  >
+                    Página de acceso
+                  </Link>
+                </div>
               </div>
             )}
           </>

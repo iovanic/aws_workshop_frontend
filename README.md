@@ -2,32 +2,6 @@
 
 Tienda demo de drones ficticios: **Next.js 14** (App Router), **TypeScript**, **Tailwind CSS**, **react-hook-form**, carrito con **useReducer** + **Context**, persistencia en **localStorage**.
 
-## Sprint 1
-
-### EC2 (Ubuntu): Docker, AWS CLI y arranque desde ECR
-
-Copia y pega el bloque completo en la instancia (usuario `ubuntu`):
-
-```bash
-#!/bin/bash
-sudo apt update
-sudo apt install docker.io -y
-sudo apt install awscli -y
-sudo usermod -aG docker ubuntu
-
-# 1. Capturamos el ID de la cuenta automáticamente
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
-# 2. Hacemos login en ECR usando la variable
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com
-
-# 3. Descargamos la imagen usando la variable
-docker pull ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/apps/next_drones:latest
-
-# 4. Ejecutamos el contenedor usando la variable
-docker run -d -p 80:3000 ${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/apps/next_drones:latest
-```
-
 ## Desarrollo
 
 ```bash

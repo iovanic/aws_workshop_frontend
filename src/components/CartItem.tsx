@@ -9,9 +9,9 @@ type Props = { line: CartLine };
 
 export function CartItem({ line }: Props) {
   const { updateQty, removeItem } = useCart();
-  const { drone, quantity } = line;
-  const cover = drone.images[0] ?? "";
-  const lineTotal = drone.price * quantity;
+  const { product, quantity } = line;
+  const cover = product.images[0] ?? "";
+  const lineTotal = product.price * quantity;
 
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-slate-700/80 bg-slate-900/50 p-3 sm:flex-row sm:items-center">
@@ -19,26 +19,30 @@ export function CartItem({ line }: Props) {
         {cover ? (
           <Image
             src={cover}
-            alt={drone.name}
+            alt={product.name}
             fill
             className="object-cover"
             sizes="(max-width: 640px) 100vw, 128px"
           />
-        ) : null}
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-slate-500">
+            Sin imagen
+          </div>
+        )}
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="font-semibold text-sky-100">{drone.name}</h3>
+        <h3 className="font-semibold text-sky-100">{product.name}</h3>
         <p className="text-sm text-slate-400">
-          {formatEuro(drone.price)} c/u
+          {formatEuro(product.price)} c/u
         </p>
       </div>
       <div className="flex items-center justify-between gap-2 sm:justify-end">
         <div className="flex items-center gap-2">
-          <label htmlFor={`qty-${drone.id}`} className="sr-only">
-            Cantidad para {drone.name}
+          <label htmlFor={`qty-${product.id}`} className="sr-only">
+            Cantidad para {product.name}
           </label>
           <input
-            id={`qty-${drone.id}`}
+            id={`qty-${product.id}`}
             type="number"
             min={1}
             max={99}
@@ -46,7 +50,7 @@ export function CartItem({ line }: Props) {
             onChange={(e) => {
               const n = parseInt(e.target.value, 10);
               if (Number.isNaN(n)) return;
-              updateQty(drone.id, n);
+              updateQty(product.id, n);
             }}
             className="w-16 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-center text-slate-200"
           />
@@ -56,7 +60,7 @@ export function CartItem({ line }: Props) {
         </p>
         <button
           type="button"
-          onClick={() => removeItem(drone.id)}
+          onClick={() => removeItem(product.id)}
           className="text-sm text-red-400 hover:underline"
         >
           Quitar

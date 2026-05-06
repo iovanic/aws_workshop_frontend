@@ -1,5 +1,4 @@
-import { DroneCard } from "@/components/DroneCard";
-import { DRONES } from "@/data/drones";
+import { CatalogGrid } from "@/components/CatalogGrid";
 import { getShopName } from "@/lib/getShopName";
 
 export default function Home() {
@@ -14,13 +13,8 @@ export default function Home() {
         >
           Catálogo {shopName}
         </h1>
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {DRONES.map((drone) => (
-            <li key={drone.id}>
-              <DroneCard drone={drone} />
-            </li>
-          ))}
-        </ul>
+
+        <CatalogGrid />
       </section>
     </div>
   );
